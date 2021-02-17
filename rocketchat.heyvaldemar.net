@@ -1,0 +1,45 @@
+upstream backend {
+    server 127.0.0.1:3000;
+}
+
+server {
+    listen [::]:443 ssl ipv6only=on;
+    listen 443 ssl;
+    server_name rocketchat.heyvaldemar.net;
+
+    # You can increase the limit if your need to.
+    client_max_body_size 200M;
+
+    error_log /var/log/nginx/rocketchat.access.log;
+
+    ssl on;
+    ssl_certificate /etc/letsencrypt/live/rocketchat.heyvaldemar.net/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/rocketchat.heyvaldemar.net/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    location / {
+        proxy_pass http://backend/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $http_host;
+
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forward-Proto http;
+        proxy_set_header X-Nginx-Proxy true;
+
+        proxy_redirect off;
+    }
+}
+
+server {
+    if ($host = rocketchat.heyvaldemar.net) {
+        return 301 https://$host$request_uri;
+    }
+        listen 80;
+        listen [::]:80;
+        server_name rocketchat.heyvaldemar.net;
+        return 404;
+}
